@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #define PORT 8080
 
 int main() {
@@ -10,6 +11,7 @@ int main() {
   struct sockaddr_in address;
   int option_value = 1;
   socklen_t addrlen = sizeof(address);
+  char buffer[1024] = {0};
 
   // Create socket to communicate with IPv4 client via TCP using IP
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -47,6 +49,12 @@ int main() {
     perror("Failed to accept client connection");
     exit(EXIT_FAILURE);
   }
+
+  read(client_sockfd, buffer, 1024 - 1);
+  printf("%s\n", buffer);
+
+  close(client_sockfd);
+  close(sockfd);
 
   return 0;
 }
