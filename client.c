@@ -1,30 +1,26 @@
 #include <arpa/inet.h>
-#include <netinet/in.h>
+#include <fcntl.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
 #include <unistd.h>
 #define PORT 8080
 
 int main(int argc, char *argv[]) {
   int status, sockfd;
   struct sockaddr_in address;
-  int option_value = 1;
-  socklen_t addrlen = sizeof(address);
-  FILE *fptr;
-  int bufferSize;
+  int target_file;
+  unsigned char byte;
 
   // Attempt to create socket
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("Could not create socket");
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   address.sin_family = AF_INET;
   address.sin_port = htons(PORT);
   if (inet_pton(AF_INET, argv[1], &address.sin_addr) <= 0) {
     perror("Invalid IPv4 Address");
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   if ((status = connect(sockfd, (struct sockaddr *)&address, sizeof(address))) <
@@ -33,8 +29,15 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  write(sockfd, "Client", sizeof("Client"));
+  target_file = open(argv[2], O_RDONLY);
+  while (read(target_file, &byte, 1) > 0) {
+    if (write(sockfd, &byte, 1) == -1) {
+      perror("Failed to write to socket");
+      return -1;
+    }
+  }
 
+  close(target_file);
   close(sockfd);
   return 0;
 }
