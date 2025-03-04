@@ -1,7 +1,9 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 #define PORT 8080
 
@@ -49,7 +51,7 @@ int main() {
     perror("Failed to listen for client connections");
     return -1;
   } else {
-    printf("Listening for client connecions...\n");
+    printf("Listening for client connections...\n");
   }
 
   // Attempt to accept an incoming client connection
@@ -62,8 +64,27 @@ int main() {
     printf("Client connected\n");
   }
 
+  // Attempt to receive size of incoming file name
+  uint file_name_size;
+  if (read(client_socket_file_descriptor, &file_name_size, 4) < 0) {
+    perror("Failed to read file_name_size");
+    return -1;
+  } else {
+    printf("Received size of file name: %u\n", file_name_size);
+  }
+
+  // Attempt to receive incoming file name
+  char file_name[1024] = {0};
+  if (read(client_socket_file_descriptor, &file_name, file_name_size) < 0) {
+    perror("Failed to read file_name");
+    return -1;
+  } else {
+    printf("Received file name: %.*s\n", (int)sizeof(file_name), file_name);
+  }
+
+  // Attempt to open or create file with received file name
   if ((incoming_file_descriptor =
-           open("received.txt", O_CREAT | O_WRONLY,
+           open(file_name, O_CREAT | O_WRONLY,
                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1) {
     perror("Failed to open or create file");
     return -1;
@@ -71,14 +92,16 @@ int main() {
     printf("File created or opened\n");
   }
 
+  // Read incoming file by bytes and write by bytes to the previously created
+  // file descriptor
   while (read(client_socket_file_descriptor, &byte, 1) > 0) {
     if (write(incoming_file_descriptor, &byte, 1) <= 0) {
       perror("Failed to read from socket");
       return -1;
-    } else {
-      printf("Writing to file\n");
     }
   }
+
+  printf("File received\n");
 
   close(incoming_file_descriptor);
   close(client_socket_file_descriptor);

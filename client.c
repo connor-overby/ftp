@@ -1,6 +1,8 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <libgen.h>
 #include <stdio.h>
+#include <sys/types.h>
 #include <unistd.h>
 #define PORT 8080
 
@@ -27,6 +29,22 @@ int main(int argc, char *argv[]) {
       0) {
     perror("Connection to server failed");
     return -1;
+  }
+
+  char *stripped_file_name = basename(argv[2]);
+  uint file_name_size = sizeof stripped_file_name;
+  if (write(sockfd, &file_name_size, 4) == -1) {
+    perror("Failed to send file_name_size");
+    return -1;
+  } else {
+    printf("%s is %d bytes\n", stripped_file_name, file_name_size);
+  }
+
+  if (write(sockfd, stripped_file_name, file_name_size) == -1) {
+    perror("Failed to send file name");
+    return -1;
+  } else {
+    printf("Sent file name: %s\n", stripped_file_name);
   }
 
   target_file = open(argv[2], O_RDONLY);
